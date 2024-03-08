@@ -14,7 +14,7 @@ class MessagePassingLayer(nn.Module):
         msg: The message function to use. This function should take in a tensor of shape (num_nodes, num_features) and a tensor of shape (num_edges, 2) and return a tensor of shape (num_edges, num_features).
         update: The update function to use. This function should take in a tensor of shape (num_nodes, num_features) and a tensor of shape (num_nodes, num_features) and return a tensor of shape (num_nodes, num_features).
     """
-    def __init__(self, aggr, msg, update):
+    def __init__(self, aggr="add", msg=None, update=None):
         self.aggr = self._get_aggr_function(aggr)
         self.msg = msg
         self.update = update
@@ -30,7 +30,7 @@ class MessagePassingLayer(nn.Module):
     
     def _get_update_function(self, update):
         if update is None:
-            return lambda x, x_agg: x_agg
+            return lambda x, u: u
         else:
             return update
     
