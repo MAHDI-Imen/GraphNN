@@ -121,3 +121,26 @@ class GraphSAGELayer(MessagePassingLayer):
 
     def forward(self, x, edge_index):
         return self.propagate(x, edge_index)
+
+
+class GINLayer(MessagePassingLayer):
+    """
+    Applies a Graph Isomorphic Network layer to the graph.
+
+    Args:
+        in_features: The number of input features.
+        out_features: The number of output features.
+        aggr: The aggregation function to use. This function should take in a tensor of shape (num_nodes, num_features) and return a tensor of shape (num_nodes, num_features).
+    """
+    def __init__(self, in_features, out_features, aggr='sum', activation=True, eps=0.): 
+        super().__init__(aggr, None, None)
+        self.in_features = in_features
+        self.out_features = out_features
+        self.aggr = self._get_aggr_function(aggr)
+        self.msg = self._get_msg_function(None)
+        self.linear = nn.Linear(in_features, out_features)
+        update = lambda x, x_aggr: F.relu(self.linear((1.+eps)*x + x_aggr)) if activation else self.linear((1.+eps)*x + x_aggr)
+        self.update = self._get_update_function(update)
+
+    def forward(self, x, edge_index):
+        return self.propagate(x, edge_index)
