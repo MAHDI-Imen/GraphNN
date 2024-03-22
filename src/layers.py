@@ -14,10 +14,11 @@ class MessagePassingLayer(nn.Module):
         msg: The message function to use. This function should take in a tensor of shape (num_nodes, num_features) and a tensor of shape (num_edges, 2) and return a tensor of shape (num_edges, num_features).
         update: The update function to use. This function should take in a tensor of shape (num_nodes, num_features) and a tensor of shape (num_nodes, num_features) and return a tensor of shape (num_nodes, num_features).
     """
-    def __init__(self, aggr="add", msg=None, update=None):
+    def __init__(self, aggr="sum", msg=None, update=None):
+        super().__init__()
         self.aggr = self._get_aggr_function(aggr)
-        self.msg = msg
-        self.update = update
+        self.msg = self._get_msg_function(msg)
+        self.update = self._get_update_function(update)
 
     def propagate(self, x, edge_index=None):
         return self.update(x, self.aggr(self.msg(x, edge_index), edge_index))
@@ -48,7 +49,10 @@ class MessagePassingLayer(nn.Module):
     def _add_aggr(self, x, edge_index=None):
         if edge_index is None:
             return x
-        index = edge_index[0].repeat(x.shape[1], 1).T
+        if len(x.shape)==1:
+            index = edge_index[0]
+        else:
+            index = edge_index[0].repeat(x.shape[1], 1).T
         src = x[edge_index[1]]
         aggregated = torch.zeros_like(x).scatter_add_(0, index=index, src=src)
         return aggregated
@@ -92,5 +96,28 @@ class GCNConvLayer(MessagePassingLayer):
     def _get_update_function(self):
         return lambda x, x_aggr: F.relu(self.linear(x_aggr))
     
+    def forward(self, x, edge_index):
+        return self.propagate(x, edge_index)
+    
+
+class GraphSAGELayer(MessagePassingLayer):
+    """
+    Applies a GraphSAGE layer to the graph.
+
+    Args:
+        in_features: The number of input features.
+        out_features: The number of output features.
+        aggr: The aggregation function to use. This function should take in a tensor of shape (num_nodes, num_features) and return a tensor of shape (num_nodes, num_features).
+    """
+    def __init__(self, in_features, out_features, aggr='sum', activation=True): 
+        super().__init__(aggr, None, None)  
+        self.in_features = in_features
+        self.out_features = out_features
+        self.aggr = self._get_aggr_function(aggr)
+        self.msg = self._get_msg_function(None)
+        self.linear = nn.Linear(in_features * 2, out_features)
+        update = lambda x, x_aggr: F.relu(self.linear(torch.cat([x, x_aggr], dim=1))) if activation else self.linear(torch.cat([x, x_aggr], dim=1))
+        self.update = self._get_update_function(update)
+
     def forward(self, x, edge_index):
         return self.propagate(x, edge_index)
