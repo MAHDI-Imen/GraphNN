@@ -13,7 +13,7 @@ def load_mnist_graph(subset=None):
         trainset = torch.utils.data.Subset(trainset, range(subset))
         testset = torch.utils.data.Subset(testset, range(subset))
     # define edge index for an image
-    coordinates_to_index = lambda i, j: i*28+j
+    coordinates_to_index = lambda i, j: int(i*28+j)
     edge_index = []
     for i in range(28):
         for j in range(28):
@@ -33,8 +33,7 @@ def load_mnist_graph(subset=None):
                 edge_index.append([coordinates_to_index(i, j), coordinates_to_index(i-1, j+1)])
             if i-1>=0 and j-1>=0:
                 edge_index.append([coordinates_to_index(i, j), coordinates_to_index(i-1, j-1)])
-            edge_index.append(coordinates_to_index(i,j))
-    edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
+    edge_index = torch.tensor(edge_index, dtype=torch.int64).t().contiguous()
 
     train_graphs = [Data(x=x.view(28*28,1), edge_index=edge_index, y=y) for x, y in trainset]
     test_graphs = [Data(x=x.view(28*28,1), edge_index=edge_index, y=y) for x, y in testset]

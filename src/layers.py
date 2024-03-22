@@ -85,7 +85,7 @@ class GCNConvLayer(MessagePassingLayer):
     def __init__(self, in_features, out_features, aggr='mean'):
         self.in_features = in_features
         self.out_features = out_features
-        self.aggr = aggr
+        self.aggr = self._get_aggr_function(aggr)
         self.msg = self._get_msg_function()
         self.update = self._get_update_function()
         self.linear = nn.Linear(in_features, out_features)
@@ -109,7 +109,7 @@ class GraphSAGELayer(MessagePassingLayer):
         out_features: The number of output features.
         aggr: The aggregation function to use. This function should take in a tensor of shape (num_nodes, num_features) and return a tensor of shape (num_nodes, num_features).
     """
-    def __init__(self, in_features, out_features, aggr='sum', activation=True): 
+    def __init__(self, in_features, out_features, aggr='mean', activation=True): 
         super().__init__(aggr, None, None)  
         self.in_features = in_features
         self.out_features = out_features
