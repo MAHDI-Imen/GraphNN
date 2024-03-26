@@ -118,9 +118,12 @@ class GraphSAGELayer(MessagePassingLayer):
         self.linear = nn.Linear(in_features * 2, out_features)
         update = lambda x, x_aggr: F.relu(self.linear(torch.cat([x, x_aggr], dim=1))) if activation else self.linear(torch.cat([x, x_aggr], dim=1))
         self.update = self._get_update_function(update)
-
+        self.reset_parameters()
     def forward(self, x, edge_index):
         return self.propagate(x, edge_index)
+    
+    def reset_parameters(self):
+        self.linear.reset_parameters()
 
 
 class GINLayer(MessagePassingLayer):

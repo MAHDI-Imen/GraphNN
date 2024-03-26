@@ -39,4 +39,3 @@ def load_mnist_graph(subset=None):
     test_graphs = [Data(x=x.view(28*28,1), edge_index=edge_index, y=y) for x, y in testset]
 
     return train_graphs, test_graphs
-

@@ -27,7 +27,7 @@ def evaluate_ppi(model, device, dataloader):
 
     return np.array(score_list_batch).mean()
 
-def evaluate_mnist(model, device, dataloader):
+def evaluate_graph_classification(model, device, dataloader, num_classes):
     score_list_batch = []
 
     model.eval()
@@ -35,7 +35,10 @@ def evaluate_mnist(model, device, dataloader):
         for i, batch in enumerate(dataloader):
             batch = batch.to(device)
             output = model(batch.x, batch.edge_index, batch.batch)
-            pred = output.argmax(dim=1)
+            if num_classes>=2:
+                pred = output.argmax(dim=1)
+            else:
+                pred = (output > 0.5).int()
             score = f1_score(batch.y.cpu().numpy(), pred.cpu().numpy(), average="micro")
             score_list_batch.append(score)
 
@@ -112,7 +115,7 @@ def train_ppi(
     return epoch_list, scores_list
 
 
-def train_mnist(
+def train_graph_classification(
     model,
     loss_fcn,
     device,
@@ -120,6 +123,7 @@ def train_mnist(
     max_epochs,
     train_dataloader,
     val_dataloader,
+    num_classes,
     save_best=False,
 ):
 
@@ -140,10 +144,14 @@ def train_mnist(
                 train_batch_device = train_batch.to(device)
                 # logits is the output of the model
                 logits = model(train_batch_device.x, train_batch_device.edge_index, train_batch_device.batch)
-                # one hot encoding of y
-                one_hot_y = torch.nn.functional.one_hot(train_batch_device.y, num_classes=10).float()
-                # compute the loss
-                loss = loss_fcn(logits, one_hot_y)
+                if num_classes>=2:
+                    # one hot encoding of y
+                    one_hot_y = torch.nn.functional.one_hot(train_batch_device.y, num_classes=num_classes).float()
+                    # compute the loss
+                    loss = loss_fcn(logits, one_hot_y)
+                else:
+                    loss = loss_fcn(logits, train_batch_device.y.unsqueeze(-1).float())
+
                 # optimizer step
                 loss.backward()
                 optimizer.step()
@@ -152,7 +160,7 @@ def train_mnist(
             loss_data = np.array(losses).mean()
 
             # evaluate the model on the validation set
-            score = evaluate_mnist(model, device, val_dataloader)
+            score = evaluate_graph_classification(model, device, val_dataloader, num_classes)
             if score > best_score:
                 best_score = score
                 if save_best:
